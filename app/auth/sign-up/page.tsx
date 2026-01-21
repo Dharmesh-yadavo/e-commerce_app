@@ -1,18 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff } from "lucide-react";
-import { motion } from "framer-motion";
+import { Eye, EyeOff, AlertCircle, CheckCircle2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { GoogleIcon } from "@/components/googleIcons";
+import { signinWithGoogle, signUpAction } from "@/lib/supabase/action";
 
-const MotionButton = motion(Button);
+const MotionButton = motion.create(Button);
 
 export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+
+  // Hook handles the state and the loading (isPending) automatically
+  const [state, formAction, isPending] = useActionState(signUpAction, {
+    error: "",
+    success: "",
+  });
 
   // Password Integrity Logic
   const hasEightChars = password.length >= 8;
@@ -41,25 +48,59 @@ export default function SignUpPage() {
               </p>
             </div>
 
-            <div className="space-y-4">
+            {/* Feedback Messages */}
+            <AnimatePresence mode="wait">
+              {state.error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="p-3 rounded-lg bg-red-500/10 border border-red-500/50 flex items-center gap-3 text-red-500 text-xs"
+                >
+                  <AlertCircle size={16} />
+                  <span>{state.error}</span>
+                </motion.div>
+              )}
+              {state.success && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/50 flex items-center gap-3 text-emerald-500 text-xs"
+                >
+                  <CheckCircle2 size={16} />
+                  <span>{state.success}</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <form action={formAction} className="space-y-4">
               <Input
+                type="text"
+                name="fullName"
+                required
                 placeholder="Full Name"
                 className="h-12 bg-neutral-900 border-stone-800 text-white placeholder:text-stone-400 focus-visible:ring-amber-300"
               />
               <Input
+                type="email"
+                name="email"
+                required
                 placeholder="Email Address"
                 className="h-12 bg-neutral-900 border-stone-800 text-white placeholder:text-stone-400 focus-visible:ring-amber-300"
               />
 
               <div className="relative">
                 <Input
-                  type={showPassword ? "text" : "password"}
+                  type="password"
+                  name="password"
+                  required
                   placeholder="Create Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 bg-neutral-900 border-stone-800 text-white placeholder:text-stone-400 focus-visible:ring-amber-300"
                 />
                 <button
+                  type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-4 text-stone-500 hover:text-yellow-400"
                 >
@@ -68,14 +109,14 @@ export default function SignUpPage() {
               </div>
 
               {/* Password Integrity Bars */}
-              <div className="space-y-3">
+              <div className="space-y-3 mt-4 mb-2">
                 <div className="flex gap-2 h-1.5">
                   {[1, 2, 3].map((level) => (
                     <div
                       key={level}
                       className={`flex-1 rounded-full transition-all duration-500 ${
                         strengthScore >= level
-                          ? "bg-yellow-300"
+                          ? "bg-yellow-300 shadow-[0_0_8px_rgba(253,224,71,0.5)]"
                           : "bg-stone-600"
                       }`}
                     />
@@ -93,48 +134,42 @@ export default function SignUpPage() {
                         ? "Medium"
                         : "Weak"}
                   </span>
-                  <div className="flex gap-4">
-                    <span
-                      className={`flex items-center gap-1 ${hasEightChars ? "text-yellow-300" : "text-stone-500"}`}
-                    >
-                      <div
-                        className={`w-1.5 h-1.5  rounded-full ${hasEightChars ? "bg-yellow-300" : "bg-stone-600"}`}
-                      />
+                  <div className="flex gap-4 text-stone-500">
+                    <span className={hasEightChars ? "text-yellow-300" : ""}>
                       8+ chars
                     </span>
-                    <span
-                      className={`flex items-center gap-1 ${hasSymbol ? "text-yellow-300" : "text-stone-500"}`}
-                    >
-                      <div
-                        className={`w-1.5 h-1.5 rounded-full ${hasSymbol ? "bg-yellow-300" : "bg-stone-600"}`}
-                      />{" "}
+                    <span className={hasSymbol ? "text-yellow-300" : ""}>
                       1 symbol
                     </span>
                   </div>
                 </div>
               </div>
+
+              <MotionButton
+                whileHover={{ scale: 1.01 }}
+                type="submit"
+                disabled={isPending}
+                className="w-full h-12 bg-yellow-400 text-black font-semibold hover:bg-yellow-300 active:scale-[0.98] transition-all disabled:opacity-50"
+              >
+                {isPending ? "Creating Account..." : "Sign up"}
+              </MotionButton>
+            </form>
+
+            <div className="text-center text-xs text-stone-400">
+              OR CONTINUE WITH
             </div>
 
-            <div className="space-y-4">
+            <form action={signinWithGoogle}>
               <MotionButton
-                whileHover={{ scale: 1.01 }}
-                className="w-full h-12 bg-yellow-400 text-black  font-semibold hover:bg-yellow-300 active:scale-[0.98] transition-all"
-              >
-                Sign up
-              </MotionButton>
-              <div className="text-center text-xs py-1 text-stone-400">
-                OR CONTINUE WITH
-              </div>
-
-              <MotionButton
+                type="submit"
                 variant="outline"
                 whileHover={{ scale: 1.01 }}
-                className="w-full h-12 border-yellow-400/40 text-white hover:bg-yellow-400/10"
+                className="w-full h-12 bg-transparent border-yellow-400/40 text-white hover:bg-yellow-400/10"
               >
                 <GoogleIcon />
                 Continue with Google
               </MotionButton>
-            </div>
+            </form>
           </CardContent>
         </Card>
       </motion.div>
